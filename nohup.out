@@ -1,0 +1,4 @@
+  File "/root/gipsr_bot/bot.py", line 5
+    packages:
+             ^
+SyntaxError: invalid syntax
