@@ -1,7 +1,7 @@
 import os
 
 # === 1. ТВОИ ДАННЫЕ ===
-BOT_TOKEN = "7387413773:AAFSXCt7sCd7ODu0Rtwn4_7ogdlt90EvZZ0"
+BOT_TOKEN = "7387413773:AAFk7aayL-lYliKqdOU3gEWyFDMhQy5DwR0"
 # Канал для отзывов
 REVIEW_CHANNEL_ID = -1003241736635
 # Канал для логов и крэшей
