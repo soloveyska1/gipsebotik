@@ -1,8 +1,7 @@
 import asyncio
 import aiosqlite
 import json
-
-DB_PATH = "bot_database.db"
+from config import DB_PATH
 
 DEFAULT_PRICES = {
     'samostoyatelnye': 2000,
@@ -40,6 +39,22 @@ async def update():
             print("✅ Колонка manager_id добавлена.")
         except Exception:
             print("ℹ️ Колонка manager_id уже есть.")
+
+        # 4. Добавляем недостающие колонки в promo_codes
+        promo_columns = [
+            ("discount_percent", "INTEGER DEFAULT 0"),
+            ("bonus_amount", "INTEGER DEFAULT 0"),
+            ("max_uses", "INTEGER DEFAULT 1"),
+            ("current_uses", "INTEGER DEFAULT 0"),
+            ("is_active", "INTEGER DEFAULT 1"),
+            ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+        ]
+        for col_name, col_type in promo_columns:
+            try:
+                await db.execute(f"ALTER TABLE promo_codes ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Колонка {col_name} добавлена в promo_codes.")
+            except Exception:
+                print(f"ℹ️ Колонка {col_name} уже есть в promo_codes.")
 
         await db.commit()
     print("😎 База готова к режиму Бога!")
