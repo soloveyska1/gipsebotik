@@ -10,7 +10,7 @@ LOG_CHANNEL_ID = -1003300275622
 
 # СПИСОК админов (user_id: username для двойной проверки)
 ADMIN_IDS = [872379852]
-ADMIN_USERNAMES = ["soloveyska"]  # Добавь свой username без @
+ADMIN_USERNAMES = ["Thisissaymoon"]  # Username без @
 # Одиночный (для совместимости)
 ADMIN_ID = 872379852
 
