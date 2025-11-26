@@ -123,9 +123,18 @@ def init_db():
         conn.commit()
 
         # === МИГРАЦИИ ===
-        # Добавляем колонки для Кодекса Салуна (если их нет)
+        # Получаем список существующих колонок
         existing_columns = [row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()]
 
+        # Добавляем базовые колонки (если их нет в старой версии БД)
+        if 'balance' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 0")
+        if 'total_spent' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN total_spent INTEGER DEFAULT 0")
+        if 'orders_count' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN orders_count INTEGER DEFAULT 0")
+
+        # Добавляем колонки для Кодекса Салуна (если их нет)
         if 'rules_accepted' not in existing_columns:
             cursor.execute("ALTER TABLE users ADD COLUMN rules_accepted INTEGER DEFAULT 0")
         if 'rules_version' not in existing_columns:
