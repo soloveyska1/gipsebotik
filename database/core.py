@@ -121,6 +121,22 @@ def init_db():
         """)
 
         conn.commit()
+
+        # === МИГРАЦИИ ===
+        # Добавляем колонки для Кодекса Салуна (если их нет)
+        existing_columns = [row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()]
+
+        if 'rules_accepted' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN rules_accepted INTEGER DEFAULT 0")
+        if 'rules_version' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN rules_version TEXT DEFAULT NULL")
+        if 'rules_accepted_at' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN rules_accepted_at TIMESTAMP DEFAULT NULL")
+        if 'welcome_bonus_received' not in existing_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN welcome_bonus_received INTEGER DEFAULT 0")
+
+        conn.commit()
+
     logging.info("База данных успешно инициализирована.")
 
 # === ПОЛЬЗОВАТЕЛИ ===

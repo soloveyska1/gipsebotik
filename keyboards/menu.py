@@ -29,7 +29,7 @@ def profile_kb():
         [InlineKeyboardButton("💳 История операций", callback_data="my_transactions")],
         [InlineKeyboardButton("🕸 Партнёрка", callback_data="partners")],
         [InlineKeyboardButton("🎟 Ввести промокод", callback_data="enter_promo")],
-        [InlineKeyboardButton("📜 Кодекс Салуна", callback_data="code_honor")],
+        [InlineKeyboardButton("📜 Традиции Салуна", callback_data="traditions")],
         [InlineKeyboardButton("🏠 Домой", callback_data="home")]
     ])
 
@@ -64,65 +64,67 @@ def order_details_kb(order_id, status):
     kb.append([InlineKeyboardButton("🔙 К заказам", callback_data="my_history")])
     return InlineKeyboardMarkup(kb)
 
-# ===== КОДЕКС САЛУНА =====
+# ===== ПОСВЯЩЕНИЕ В КОВБОИ =====
 
-def salon_code_welcome_kb():
-    """Первый экран: приветствие с картинкой."""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📜 Читать Кодекс Салуна", callback_data="code_read_full")],
-    ])
-
-def salon_code_short_kb():
-    """Краткая версия кодекса."""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📖 Подробнее о традициях", callback_data="code_read_details")],
-        [InlineKeyboardButton("✅ Всё понятно, принимаю!", callback_data="code_accept_start")]
-    ])
-
-def salon_code_full_kb():
-    """Полная версия — кнопка принятия."""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("⬆️ К краткой версии", callback_data="code_read_full")],
-        [InlineKeyboardButton("✅ Принимаю традиции Салуна", callback_data="code_accept_start")]
-    ])
-
-def salon_code_checkboxes_kb(checks: dict):
+def initiation_welcome_kb(agreed: bool = False):
     """
-    Клавиатура с чекбоксами для принятия.
-    checks = {"materials": False, "payment": False, "confidential": False}
+    Главный экран посвящения.
+    Один чекбокс + кнопка входа или подробнее.
     """
-    def checkbox(checked):
-        return "✅" if checked else "⬜️"
+    checkbox = "✅" if agreed else "⬜️"
 
     kb = [
         [InlineKeyboardButton(
-            f"{checkbox(checks.get('materials', False))} Работы — для изучения, использую сам",
-            callback_data="code_check_materials"
-        )],
-        [InlineKeyboardButton(
-            f"{checkbox(checks.get('payment', False))} Понимаю условия оплаты и правок",
-            callback_data="code_check_payment"
-        )],
-        [InlineKeyboardButton(
-            f"{checkbox(checks.get('confidential', False))} Храню тайну Салуна",
-            callback_data="code_check_confidential"
+            f"{checkbox} Понял, погнали!",
+            callback_data="init_toggle_agree"
         )],
     ]
 
-    # Если все отмечены — показываем кнопку входа
-    if all(checks.values()):
-        kb.append([InlineKeyboardButton("🚪 Войти в Салун 🎁", callback_data="code_final_accept")])
+    if agreed:
+        kb.append([InlineKeyboardButton("🚪 Войти в Салун 🎁", callback_data="init_accept")])
     else:
-        kb.append([InlineKeyboardButton("☝️ Отметь все пункты выше", callback_data="code_not_ready")])
+        kb.append([InlineKeyboardButton("👆 Поставь галочку и заходи", callback_data="init_not_agreed")])
+
+    kb.append([InlineKeyboardButton("📖 Хочу подробнее", callback_data="init_details")])
 
     return InlineKeyboardMarkup(kb)
 
-def salon_code_readonly_kb():
-    """Кодекс для повторного просмотра (из профиля)."""
+
+def initiation_details_kb():
+    """Подробная версия — кнопка назад и вход."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📖 Полная версия", callback_data="code_view_full")],
+        [InlineKeyboardButton("🚪 Всё понял, войти в Салун", callback_data="init_accept")],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="init_back")]
+    ])
+
+
+def traditions_readonly_kb():
+    """Традиции для повторного просмотра (из профиля)."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📖 Подробнее", callback_data="traditions_full")],
         [InlineKeyboardButton("🔙 В профиль", callback_data="profile")]
     ])
+
+
+# === АЛИАСЫ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ===
+# (чтобы старый код не ломался)
+
+def salon_code_welcome_kb():
+    return initiation_welcome_kb(False)
+
+def salon_code_short_kb():
+    return initiation_welcome_kb(False)
+
+def salon_code_full_kb():
+    return initiation_details_kb()
+
+def salon_code_checkboxes_kb(checks: dict):
+    # Считаем согласие если все True
+    agreed = all(checks.values()) if checks else False
+    return initiation_welcome_kb(agreed)
+
+def salon_code_readonly_kb():
+    return traditions_readonly_kb()
 
 # ===== УСЛУГИ И ПРАЙС =====
 

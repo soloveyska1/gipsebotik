@@ -9,9 +9,6 @@ import utils
 
 WELCOME_PHOTO_ID = "AgACAgIAAxkBAAIRBGkf3jybt7UiWBtsS4itzUfhWvceAALIC2sb7NgAAUkgNJP7MzMPsAEAAwIAA3kAAzYE"
 
-# Картинка для Кодекса Салуна (робот-ковбой)
-SALON_CODE_PHOTO_ID = "AgACAgIAAxkBAAICE2dmbBqExample123456789"  # Заменить на реальный file_id
-
 REVIEW_STATE = 1
 PROMO_STATE = 2
 
@@ -20,186 +17,131 @@ WELCOME_BONUS_AMOUNT = 100
 # Максимум бонусов можно потратить = 20% от заказа
 MAX_BONUS_PERCENT = 0.20
 
-# === ТЕКСТЫ КОДЕКСА САЛУНА ===
+# === ТЕКСТЫ ПОСВЯЩЕНИЯ В КОВБОИ ===
 
-SALON_CODE_WELCOME = """
-🚪 <b>ДОБРО ПОЖАЛОВАТЬ В САЛУН, {name}!</b>
+def get_time_greeting():
+    """Приветствие в зависимости от времени суток (МСК)."""
+    from datetime import datetime, timezone, timedelta
+    msk = timezone(timedelta(hours=3))
+    hour = datetime.now(msk).hour
 
-Вижу, ты устал с дороги. Дедлайны жарят как солнце пустыни, а преподы злее гремучих змей.
+    if 5 <= hour < 12:
+        return "Ранняя пташка! Кофе уже варится ☕"
+    elif 12 <= hour < 17:
+        return "В самое пекло заглянул, уважаю 🌵"
+    elif 17 <= hour < 22:
+        return "Вечерний гость — лучший гость 🌅"
+    else:
+        return "Полуночник? Мы тоже не спим 🌙"
 
-Здесь тебе помогут. Но прежде чем сесть за стол — узнай <b>традиции нашего Салуна</b>.
+# Главный экран посвящения (с картинкой)
+INITIATION_WELCOME = """
+<b>ЭЙ, {name}!</b>
 
-Это займёт минуту, а потом получишь <b>🎁 {bonus} бонусных рублей</b> на первый заказ.
+{time_greeting}
+
+Заходи, тут рады гостям. Вижу — дедлайны достали, преподы звереют. Знакомо.
+
+<b>Расслабься. Ты в «Экспресс-Курсаче».</b>
+Здесь помогут с любой учебной работой — быстро, качественно, секретно.
 """
 
-SALON_CODE_SHORT = """
-📜 <b>КОДЕКС САЛУНА</b>
-<i>Краткая версия для занятых ковбоев</i>
+# Что получит гость (второй экран или продолжение)
+INITIATION_BENEFITS = """
+🎁 <b>ЧТО ПОЛУЧИШЬ:</b>
+
+✓ <b>{bonus}₽ на счёт</b> — прямо сейчас, за вход
+✓ <b>3 раунда правок бесплатно</b> — докрутим до идеала
+✓ <b>Работаем быстро:</b> эссе от 1 дня, курсач от 5
+✓ <b>Полная секретность</b> — никто не узнает
 
 ━━━━━━━━━━━━━━━━━━━━
 
-🤝 <b>НАША СДЕЛКА</b>
-Ты заказываешь — мы делаем. Честно и в срок.
+💰 <b>КАК ЭТО РАБОТАЕТ:</b>
 
-💰 <b>ЗОЛОТО</b>
-Предоплата 50% — и мы начинаем работу.
-Остаток — когда покажем результат.
+Половина вперёд → делаем работу → показываем → платишь остаток.
 
-⏰ <b>СРОКИ</b>
-• Эссе, мелочь: <b>1-3 дня</b>
-• Курсовые: <b>5-7 дней</b>
-• Дипломы: <b>от 14 дней</b>
-• Срочно? Можно быстрее, но дороже.
+Всё прозрачно. Никаких сюрпризов.
+Если что не так — разберёмся по-честному.
 
-🔧 <b>ПРАВКИ</b>
-3 пакета правок — бесплатно.
-Дальше — обсудим как ковбой с ковбоем.
+━━━━━━━━━━━━━━━━━━━━
 
-🎯 <b>ГЛАВНОЕ</b>
-Работы даём для <b>изучения и вдохновения</b>.
-Как ты их используешь — твоё дело.
+🤫 <b>И ГЛАВНОЕ:</b>
 
-🤫 <b>ТИШИНА</b>
-Мы не знаем тебя. Ты не знаешь нас.
+Что в Салуне — остаётся в Салуне.
+Мы не спрашиваем лишнего. Ты не рассказываешь о нас.
 Так спокойнее всем.
-
-━━━━━━━━━━━━━━━━━━━━
-
-<i>👇 Хочешь подробнее — жми кнопку ниже</i>
 """
 
-SALON_CODE_FULL = """
-📜 <b>КОДЕКС САЛУНА</b>
-<i>Полная версия — все традиции</i>
+# Полная версия для тех, кто хочет подробнее
+INITIATION_FULL = """
+📖 <b>ПОДРОБНЕЕ О САЛУНЕ</b>
 
-━━━━━━━━━━━━━━━━━━━━
+<b>Сроки:</b>
+• Эссе, статьи: <b>1-3 дня</b>
+• Курсовые: <b>5-7 дней</b>
+• Дипломы: <b>14-21 день</b>
+• Срочно? Сделаем быстрее, но дороже
 
-🤝 <b>1. СЛОВО КОВБОЯ</b>
+<b>Оплата:</b>
+• 50% аванс — и мы начинаем
+• 50% после — когда покажем результат
+• Передумал до старта? Вернём без вопросов
 
-В Салуне слово дороже золота.
-• Ты заказал — значит, заплатишь
-• Мы взялись — значит, сделаем
-• Проблемы решаем разговором, не стрельбой
-
-━━━━━━━━━━━━━━━━━━━━
-
-💰 <b>2. ЗОЛОТО И ВИСКИ</b>
-
-<b>Как платить:</b>
-• 50% предоплата — чтобы мы начали
-• 50% после — когда покажем работу
-
-<b>Передумал?</b>
-• До начала работы — вернём всё, без вопросов
-• После начала — извини, бармен уже открыл бутылку
-• Спорные случаи решает Шериф (админ)
+<b>Правки:</b>
+• 3 пакета бесплатно в рамках ТЗ
+• Дальше — договоримся по-человечески
 
 <b>Бонусы:</b>
 • Копятся с каждого заказа
-• Тратить можно до 20% от суммы заказа
-• Бонусы — это скидка, не живые деньги
+• Тратить можно до 20% от суммы
+
+<b>Твоя добыча:</b>
+Работа — твоя полностью.
+Даём качественный материал для изучения.
+Как используешь — твоё дело.
 
 ━━━━━━━━━━━━━━━━━━━━
 
-⏰ <b>3. КОГДА ЖДАТЬ</b>
-
-• 💋 Эссе, статьи: <b>1-3 дня</b>
-• 🌹 Курсовые: <b>5-7 дней</b>
-• 💍 Дипломы: <b>14-21 день</b>
-• 🎩 Практика: <b>3-5 дней</b>
-
-<b>Нужно срочно?</b>
-Сделаем быстрее, но цена вырастет.
-Дилижанс-экспресс стоит дороже обычного.
-
-<b>Форс-мажор:</b>
-Если что-то идёт не по плану — пишем сразу.
-Без сюрпризов в последний момент.
-
-━━━━━━━━━━━━━━━━━━━━
-
-🔧 <b>4. ПРАВКИ И ДОРАБОТКИ</b>
-
-• <b>3 пакета правок</b> — входят в стоимость
-• Правка = конкретный список замечаний
-• Дальше — по договорённости (обычно недорого)
-
-<b>Когда можно просить правки:</b>
-• Пока работа не принята окончательно
-• В рамках изначального ТЗ
-
-<b>Что не считается правкой:</b>
-• "Перепиши всё по-другому"
-• "Добавь ещё 20 страниц"
-• Новые требования, которых не было
-
-━━━━━━━━━━━━━━━━━━━━
-
-🎯 <b>5. ТВОЯ ДОБЫЧА</b>
-
-Работа — твоя. Полностью.
-
-<b>Мы даём:</b>
-• Качественный материал для изучения
-• Образец, как должна выглядеть работа
-• Основу для твоего собственного текста
-
-<b>Ты решаешь:</b>
-• Как использовать эти материалы
-• Что с ними делать дальше
-• Всю ответственность за применение
-
-<i>Мы — проводники по пустыне знаний.
-Карту дадим, но идёшь ты сам.</i>
-
-━━━━━━━━━━━━━━━━━━━━
-
-🤫 <b>6. ТИШИНА В САЛУНЕ</b>
-
-• Мы не спрашиваем лишнего
-• Ты не рассказываешь о нас
-• Переписка остаётся между нами
-• Данные не передаём третьим лицам
-
-<i>В Салуне не принято болтать.
-Это защищает и тебя, и нас.</i>
-
-━━━━━━━━━━━━━━━━━━━━
-
-⚖️ <b>7. ЕСЛИ ЧТО-ТО ПОШЛО НЕ ТАК</b>
-
-Не хватайся за кольт — сначала поговорим.
-
-• Пиши менеджеру, объясни ситуацию
-• Шериф (админ) разберётся честно
-• Мы заинтересованы в довольных клиентах
-
-<i>Стрелять без предупреждения — не наш стиль.</i>
-
-━━━━━━━━━━━━━━━━━━━━
-
-<b>P.S.</b> Ценим тех, кто читает до конца.
-Шепни бармену <code>FIRSTSHOT</code> — он поймёт 😉
-
-━━━━━━━━━━━━━━━━━━━━
+<i>🎯 Секрет для внимательных:
+Шепни бармену <code>FIRSTSHOT</code> — он поймёт</i>
 """
 
-SALON_CODE_CHECKBOXES = """
-📋 <b>ПОСЛЕДНИЙ ШАГ</b>
+# Финальный экран после принятия
+INITIATION_SUCCESS = """
+🎉 <b>ДОБРО ПОЖАЛОВАТЬ, {name}!</b>
 
-Чтобы войти в Салун, подтверди:
+Ты теперь свой в Салуне.
+
+🎁 <b>+{bonus}₽</b> уже на счёте — потрать на первый заказ!
+
+<i>Удачи на Диком Западе знаний, ковбой!</i>
+
+━━━━━━━━━━━━━━━━━━━━
+
+👇 <b>Чем помочь?</b>
 """
 
-SALON_CODE_ACCEPTED = """
-🎉 <b>ДОБРО ПОЖАЛОВАТЬ В САЛУН, {name}!</b>
+# Текст для просмотра из профиля (уже принявшим)
+INITIATION_READONLY = """
+📜 <b>ТРАДИЦИИ САЛУНА</b>
 
-Ты теперь один из нас.
+Ты уже свой, но освежим память:
 
-🎁 <b>+{bonus}₽</b> упали на твой счёт — потрать их на первый заказ.
+🎁 <b>Твои привилегии:</b>
+• 3 раунда правок бесплатно
+• Бонусы с каждого заказа (до 20% скидки)
+• Полная конфиденциальность
 
-<i>Удачи на Диком Западе знаний, ковбой!</i> 🤠
+💰 <b>Как работаем:</b>
+• 50/50 — половина до, половина после
+• Показываем результат перед финальной оплатой
+• Проблемы решаем честно
 
-👇 <b>Что нальём?</b>
+⏰ <b>Сроки:</b>
+• Эссе: 1-3 дня • Курсовая: 5-7 дней • Диплом: от 14 дней
+
+<i>Что в Салуне — остаётся в Салуне 🤫</i>
 """
 
 # === ОБРАБОТЧИКИ ===
@@ -273,129 +215,80 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# ===== КОДЕКС САЛУНА: ФЛОУ =====
+# ===== ПОСВЯЩЕНИЕ В КОВБОИ: ФЛОУ =====
 
-async def show_salon_code_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 1: Приветствие с картинкой."""
+async def show_initiation_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Шаг 1: Приветствие + выгоды (главный экран посвящения)."""
     user = update.effective_user
 
-    text = SALON_CODE_WELCOME.format(
+    # Собираем текст с приветствием по времени суток
+    welcome = INITIATION_WELCOME.format(
         name=user.first_name,
-        bonus=WELCOME_BONUS_AMOUNT
+        time_greeting=get_time_greeting()
     )
+    benefits = INITIATION_BENEFITS.format(bonus=WELCOME_BONUS_AMOUNT)
+    full_text = welcome + benefits
 
-    # Пытаемся отправить с картинкой робота-ковбоя
-    try:
-        if update.callback_query:
-            await update.callback_query.answer()
+    if update.callback_query:
+        await update.callback_query.answer()
+        try:
             await update.callback_query.message.delete()
+        except:
+            pass
 
-        await context.bot.send_photo(
-            chat_id=user.id,
-            photo=SALON_CODE_PHOTO_ID,
-            caption=text,
-            reply_markup=kb.salon_code_welcome_kb(),
-            parse_mode="HTML"
-        )
-    except Exception:
-        # Если картинка не загружена — отправляем текстом
-        if update.callback_query:
-            await update.callback_query.message.edit_text(
-                text,
-                reply_markup=kb.salon_code_welcome_kb(),
-                parse_mode="HTML"
-            )
-        else:
-            await update.message.reply_text(
-                text,
-                reply_markup=kb.salon_code_welcome_kb(),
-                parse_mode="HTML"
-            )
-
-
-async def show_salon_code_short(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 2: Краткая версия Кодекса."""
-    query = update.callback_query
-    await query.answer()
-
-    await query.message.edit_text(
-        SALON_CODE_SHORT,
-        reply_markup=kb.salon_code_short_kb(),
+    # Отправляем с картинкой
+    await context.bot.send_photo(
+        chat_id=user.id,
+        photo=WELCOME_PHOTO_ID,
+        caption=full_text,
+        reply_markup=kb.initiation_welcome_kb(),
         parse_mode="HTML"
     )
 
 
-async def show_salon_code_full(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 2.5: Полная версия Кодекса."""
+# Алиас для обратной совместимости
+show_salon_code_welcome = show_initiation_welcome
+
+
+async def show_initiation_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Подробная версия для тех, кто хочет узнать больше."""
     query = update.callback_query
     await query.answer()
 
-    await query.message.edit_text(
-        SALON_CODE_FULL,
-        reply_markup=kb.salon_code_full_kb(),
+    try:
+        await query.message.delete()
+    except:
+        pass
+
+    await context.bot.send_message(
+        chat_id=query.from_user.id,
+        text=INITIATION_FULL,
+        reply_markup=kb.initiation_details_kb(),
         parse_mode="HTML"
     )
 
 
-async def show_salon_code_checkboxes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 3: Чекбоксы для принятия."""
+async def toggle_initiation_agree(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Переключение чекбокса согласия."""
     query = update.callback_query
-    await query.answer()
-
-    # Инициализируем состояние чекбоксов
-    if 'code_checks' not in context.user_data:
-        context.user_data['code_checks'] = {
-            'materials': False,
-            'payment': False,
-            'confidential': False
-        }
-
-    await query.message.edit_text(
-        SALON_CODE_CHECKBOXES,
-        reply_markup=kb.salon_code_checkboxes_kb(context.user_data['code_checks']),
-        parse_mode="HTML"
-    )
-
-
-async def toggle_checkbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Переключение чекбокса."""
-    query = update.callback_query
-    data = query.data
 
     # Инициализируем, если нет
-    if 'code_checks' not in context.user_data:
-        context.user_data['code_checks'] = {
-            'materials': False,
-            'payment': False,
-            'confidential': False
-        }
+    if 'initiation_agreed' not in context.user_data:
+        context.user_data['initiation_agreed'] = False
 
-    checks = context.user_data['code_checks']
-
-    # Определяем какой чекбокс нажали
-    if data == "code_check_materials":
-        checks['materials'] = not checks['materials']
-    elif data == "code_check_payment":
-        checks['payment'] = not checks['payment']
-    elif data == "code_check_confidential":
-        checks['confidential'] = not checks['confidential']
+    # Переключаем
+    context.user_data['initiation_agreed'] = not context.user_data['initiation_agreed']
 
     await query.answer()
 
     # Обновляем клавиатуру
     await query.message.edit_reply_markup(
-        reply_markup=kb.salon_code_checkboxes_kb(checks)
+        reply_markup=kb.initiation_welcome_kb(context.user_data['initiation_agreed'])
     )
 
 
-async def code_not_ready(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Пользователь нажал кнопку, но не все чекбоксы отмечены."""
-    query = update.callback_query
-    await query.answer("☝️ Сначала отметь все пункты выше", show_alert=True)
-
-
-async def accept_salon_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Финальное принятие Кодекса."""
+async def accept_initiation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Финальное принятие — вход в Салун."""
     query = update.callback_query
     user = query.from_user
 
@@ -405,13 +298,13 @@ async def accept_salon_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Начисляем приветственный бонус
     bonus_given = await db.give_welcome_bonus(user.id, WELCOME_BONUS_AMOUNT)
 
-    await query.answer("🎉 Добро пожаловать в Салун!", show_alert=True)
+    await query.answer("🎉 Добро пожаловать!", show_alert=True)
 
-    # Очищаем состояние чекбоксов
-    context.user_data.pop('code_checks', None)
+    # Очищаем состояние
+    context.user_data.pop('initiation_agreed', None)
 
     # Показываем сообщение об успехе
-    success_text = SALON_CODE_ACCEPTED.format(
+    success_text = INITIATION_SUCCESS.format(
         name=user.first_name,
         bonus=WELCOME_BONUS_AMOUNT if bonus_given else 0
     )
@@ -430,28 +323,46 @@ async def accept_salon_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def show_code_of_honor(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показать Кодекс из профиля (для тех, кто уже принял)."""
+async def initiation_not_agreed(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Пользователь не отметил чекбокс."""
+    query = update.callback_query
+    await query.answer("👆 Сначала подтверди — поставь галочку выше", show_alert=True)
+
+
+async def show_traditions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать традиции из профиля (для тех, кто уже в Салуне)."""
     query = update.callback_query
     await query.answer()
 
     await query.message.edit_text(
-        SALON_CODE_SHORT + "\n\n<i>Ты уже принял традиции Салуна ✅</i>",
-        reply_markup=kb.salon_code_readonly_kb(),
+        INITIATION_READONLY,
+        reply_markup=kb.traditions_readonly_kb(),
         parse_mode="HTML"
     )
 
 
-async def show_code_full_readonly(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Полная версия Кодекса (просмотр)."""
+async def show_traditions_full(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Полная версия традиций (просмотр из профиля)."""
     query = update.callback_query
     await query.answer()
 
     await query.message.edit_text(
-        SALON_CODE_FULL,
-        reply_markup=kb.salon_code_readonly_kb(),
+        INITIATION_FULL,
+        reply_markup=kb.traditions_readonly_kb(),
         parse_mode="HTML"
     )
+
+
+# === АЛИАСЫ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ===
+# (чтобы старые callback_data продолжали работать)
+show_salon_code_short = show_initiation_welcome
+show_salon_code_full = show_initiation_details
+show_salon_code_checkboxes = show_initiation_welcome
+toggle_checkbox = toggle_initiation_agree
+code_not_ready = initiation_not_agreed
+accept_salon_code = accept_initiation
+show_code_of_honor = show_traditions
+show_code_full_readonly = show_traditions_full
 
 
 # ===== ПРОФИЛЬ И ПРОЧЕЕ =====

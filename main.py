@@ -41,20 +41,23 @@ def main():
     print("🚀 Инициализация бота...")
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # === КОДЕКС САЛУНА: ОБРАБОТЧИКИ ===
-    # Показ кодекса (кнопка "Читать")
+    # === ПОСВЯЩЕНИЕ В КОВБОИ: НОВЫЕ ОБРАБОТЧИКИ ===
+    app.add_handler(CallbackQueryHandler(client.toggle_initiation_agree, pattern="^init_toggle_agree$"))
+    app.add_handler(CallbackQueryHandler(client.accept_initiation, pattern="^init_accept$"))
+    app.add_handler(CallbackQueryHandler(client.initiation_not_agreed, pattern="^init_not_agreed$"))
+    app.add_handler(CallbackQueryHandler(client.show_initiation_details, pattern="^init_details$"))
+    app.add_handler(CallbackQueryHandler(client.show_initiation_welcome, pattern="^init_back$"))
+    # Традиции из профиля
+    app.add_handler(CallbackQueryHandler(client.show_traditions, pattern="^traditions$"))
+    app.add_handler(CallbackQueryHandler(client.show_traditions_full, pattern="^traditions_full$"))
+
+    # === СТАРЫЕ ОБРАБОТЧИКИ (обратная совместимость) ===
     app.add_handler(CallbackQueryHandler(client.show_salon_code_short, pattern="^code_read_full$"))
-    # Подробная версия
     app.add_handler(CallbackQueryHandler(client.show_salon_code_full, pattern="^code_read_details$"))
-    # Начало принятия (чекбоксы)
     app.add_handler(CallbackQueryHandler(client.show_salon_code_checkboxes, pattern="^code_accept_start$"))
-    # Переключение чекбоксов
     app.add_handler(CallbackQueryHandler(client.toggle_checkbox, pattern="^code_check_"))
-    # Кнопка "не готово"
     app.add_handler(CallbackQueryHandler(client.code_not_ready, pattern="^code_not_ready$"))
-    # Финальное принятие
     app.add_handler(CallbackQueryHandler(client.accept_salon_code, pattern="^code_final_accept$"))
-    # Просмотр из профиля
     app.add_handler(CallbackQueryHandler(client.show_code_of_honor, pattern="^code_honor$"))
     app.add_handler(CallbackQueryHandler(client.show_code_full_readonly, pattern="^code_view_full$"))
 
