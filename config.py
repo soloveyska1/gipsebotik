@@ -1,16 +1,19 @@
 import os
 
 # === 1. ТВОИ ДАННЫЕ ===
-BOT_TOKEN = "7387413773:AAFSXCt7sCd7ODu0Rtwn4_7ogdlt90EvZZ0"
+BOT_TOKEN = "7387413773:AAFk7aayL-lYliKqdOU3gEWyFDMhQy5DwR0"
 # Канал для отзывов
 REVIEW_CHANNEL_ID = -1003241736635
 # Канал для логов и крэшей
 LOG_CHANNEL_ID = -1003300275622
 
 # СПИСОК админов
-ADMIN_IDS = [872379852] 
+ADMIN_IDS = [872379852]
 # Одиночный (для совместимости)
-ADMIN_ID = 872379852 
+ADMIN_ID = 872379852
+
+# Секретный код для доступа к админке
+ADMIN_SECRET_CODE = "admin_sheriff2024" 
 
 # Ссылка на канал
 CHANNEL_LINK = "https://t.me/+AbCdEfGhIjKlMnOp" 
