@@ -1,22 +1,32 @@
 import os
+import secrets
 
 # === 1. ТВОИ ДАННЫЕ ===
 BOT_TOKEN = "7387413773:AAFSXCt7sCd7ODu0Rtwn4_7ogdlt90EvZZ0"
 # Канал для отзывов
 REVIEW_CHANNEL_ID = -1003241736635
-# Канал для логов и крэшей
+# Канал для логов и крэшей (сюда приходят ВСЕ уведомления)
 LOG_CHANNEL_ID = -1003300275622
 
-# СПИСОК админов
-ADMIN_IDS = [872379852] 
+# СПИСОК админов (user_id: username для двойной проверки)
+ADMIN_IDS = [872379852]
+ADMIN_USERNAMES = ["soloveyska"]  # Добавь свой username без @
 # Одиночный (для совместимости)
-ADMIN_ID = 872379852 
+ADMIN_ID = 872379852
 
 # Ссылка на канал
-CHANNEL_LINK = "https://t.me/+AbCdEfGhIjKlMnOp" 
+CHANNEL_LINK = "https://t.me/+AbCdEfGhIjKlMnOp"
 
-# === 2. ТЕХНИЧЕСКИЕ НАСТРОЙКИ ===
-LOGS_DIR = "logs"            
+# === 2. БЕЗОПАСНОСТЬ АДМИНКИ ===
+# Секретный код для входа (можно менять)
+ADMIN_SECRET_CODE = "sheriff2024"  # Команда будет /admin_sheriff2024
+# Максимум неверных попыток до бана
+MAX_ADMIN_ATTEMPTS = 3
+# Время бана за попытки взлома (в секундах)
+ADMIN_BAN_TIME = 3600  # 1 час
+
+# === 3. ТЕХНИЧЕСКИЕ НАСТРОЙКИ ===
+LOGS_DIR = "logs"
 DB_PATH = "syndicate_v3.db" 
 
 if not os.path.exists(LOGS_DIR):

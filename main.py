@@ -1,17 +1,19 @@
 import logging
 import os
 import asyncio
+import re
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ConversationHandler
 )
 
 # Импорты конфига и базы
-from config import BOT_TOKEN, LOGS_DIR
+from config import BOT_TOKEN, LOGS_DIR, ADMIN_SECRET_CODE
 from database.core import init_db, create_promo_code
 
 # Импорты хендлеров
 from handlers import client
+from handlers import admin
 
 # Настройка логов
 if not os.path.exists(LOGS_DIR):
@@ -109,6 +111,102 @@ def main():
     # "Пасхалка" на слово "спасибо"
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, client.handle_thanks))
 
+    # === СУПЕР-АДМИНКА ===
+
+    # Секретная команда входа
+    app.add_handler(CommandHandler(f"admin_{ADMIN_SECRET_CODE}", admin.admin_secret_entry))
+
+    # Главная панель
+    app.add_handler(CallbackQueryHandler(admin.show_admin_panel, pattern="^adm_panel$"))
+    app.add_handler(CallbackQueryHandler(admin.admin_refresh, pattern="^adm_refresh$"))
+
+    # Клиенты
+    app.add_handler(CallbackQueryHandler(admin.show_clients, pattern="^adm_clients$"))
+    app.add_handler(CallbackQueryHandler(admin.clients_filter, pattern="^adm_cli_filter_"))
+    app.add_handler(CallbackQueryHandler(admin.clients_page, pattern="^adm_cli_page_"))
+    app.add_handler(CallbackQueryHandler(admin.show_client_card, pattern="^adm_client_"))
+    app.add_handler(CallbackQueryHandler(admin.toggle_ban, pattern="^adm_ban_"))
+    app.add_handler(CallbackQueryHandler(admin.toggle_watch, pattern="^adm_watch_"))
+
+    # Баланс клиента
+    balance_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(admin.ask_balance_change, pattern="^adm_balance_")],
+        states={
+            admin.WAITING_BALANCE_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.process_balance_change)]
+        },
+        fallbacks=[CallbackQueryHandler(admin.show_admin_panel, pattern="^adm_panel$")]
+    )
+    app.add_handler(balance_conv)
+
+    # Заметки о клиентах
+    note_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(admin.ask_note, pattern="^adm_note_")],
+        states={
+            admin.WAITING_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.process_note)]
+        },
+        fallbacks=[CallbackQueryHandler(admin.show_admin_panel, pattern="^adm_panel$")]
+    )
+    app.add_handler(note_conv)
+
+    # Заказы
+    app.add_handler(CallbackQueryHandler(admin.show_orders, pattern="^adm_orders$"))
+    app.add_handler(CallbackQueryHandler(admin.orders_filter, pattern="^adm_ord_filter_"))
+    app.add_handler(CallbackQueryHandler(admin.orders_page, pattern="^adm_ord_page_"))
+    app.add_handler(CallbackQueryHandler(admin.show_order_card, pattern="^adm_order_"))
+    app.add_handler(CallbackQueryHandler(admin.change_order_status, pattern="^adm_ord_status_"))
+
+    # Финансы
+    app.add_handler(CallbackQueryHandler(admin.show_finance, pattern="^adm_finance$"))
+    app.add_handler(CallbackQueryHandler(admin.show_finance_by_services, pattern="^adm_fin_services$"))
+
+    # Аналитика
+    app.add_handler(CallbackQueryHandler(admin.show_analytics, pattern="^adm_analytics$"))
+    app.add_handler(CallbackQueryHandler(admin.show_referral_stats, pattern="^adm_an_referrals$"))
+
+    # Рассылка
+    app.add_handler(CallbackQueryHandler(admin.show_broadcast, pattern="^adm_broadcast$"))
+    broadcast_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(admin.start_broadcast, pattern="^adm_bc_(all|with_orders|without_orders|vip)$")],
+        states={
+            admin.WAITING_BROADCAST_TEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.process_broadcast_text)]
+        },
+        fallbacks=[CallbackQueryHandler(admin.show_admin_panel, pattern="^adm_panel$")]
+    )
+    app.add_handler(broadcast_conv)
+    app.add_handler(CallbackQueryHandler(admin.send_broadcast, pattern="^adm_bc_send_"))
+
+    # Промокоды
+    app.add_handler(CallbackQueryHandler(admin.show_promos, pattern="^adm_promos$"))
+    app.add_handler(CallbackQueryHandler(admin.show_promo_stats, pattern="^adm_promo_stats$"))
+    app.add_handler(CallbackQueryHandler(admin.toggle_promo, pattern="^adm_promo_toggle_"))
+    promo_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(admin.start_promo_create, pattern="^adm_promo_create$")],
+        states={
+            admin.WAITING_PROMO_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.process_promo_code)],
+            admin.WAITING_PROMO_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.process_promo_amount)]
+        },
+        fallbacks=[CallbackQueryHandler(admin.show_admin_panel, pattern="^adm_panel$")]
+    )
+    app.add_handler(promo_conv)
+
+    # Уведомления
+    app.add_handler(CallbackQueryHandler(admin.show_notifications, pattern="^adm_notifications$"))
+    app.add_handler(CallbackQueryHandler(admin.toggle_notification, pattern="^adm_notif_toggle_"))
+
+    # Настройки
+    app.add_handler(CallbackQueryHandler(admin.show_settings, pattern="^adm_settings$"))
+    app.add_handler(CallbackQueryHandler(admin.backup_database, pattern="^adm_set_backup$"))
+
+    # Чат с клиентом
+    chat_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(admin.start_chat, pattern="^adm_chat_\\d+$")],
+        states={
+            admin.WAITING_CHAT_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.process_chat_message)]
+        },
+        fallbacks=[CallbackQueryHandler(admin.show_admin_panel, pattern="^adm_panel$")]
+    )
+    app.add_handler(chat_conv)
+
     # Инициализация промокодов при старте
     async def post_init(application):
         await init_promo_codes()
@@ -117,6 +215,7 @@ def main():
 
     print("🤠 SYSTEM READY. SALOON IS OPEN.")
     print("📜 Кодекс Салуна активирован для новых пользователей")
+    print(f"🔐 Админка: /admin_{ADMIN_SECRET_CODE}")
     app.run_polling()
 
 

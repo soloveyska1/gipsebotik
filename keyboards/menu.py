@@ -16,9 +16,7 @@ def main_kb(user_id):
         [InlineKeyboardButton("✍️ Оставить отзыв", callback_data="write_review")],
     ]
 
-    # Админская кнопка
-    if user_id in ADMIN_IDS:
-        kb.append([InlineKeyboardButton("🔐 CRM Админа", callback_data="adm_panel")])
+    # Админская кнопка УБРАНА — вход через секретную команду /admin_<код>
 
     return InlineKeyboardMarkup(kb)
 
