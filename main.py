@@ -1,7 +1,13 @@
+"""
+🤖 GIPSEBOT - Telegram Bot for Student Services
+Главный файл запуска
+"""
 import logging
 import os
-import asyncio
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
+from telegram.ext import (
+    Application, CommandHandler, CallbackQueryHandler,
+    MessageHandler, filters, ConversationHandler
+)
 
 # Импорты конфига и базы
 from config import BOT_TOKEN, LOGS_DIR
