@@ -14,6 +14,76 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def migrate_db():
+    """Миграция: добавляем недостающие колонки в существующую БД"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        # Получаем список существующих колонок в users
+        cursor.execute("PRAGMA table_info(users)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        # Колонки которые нужны
+        user_columns = {
+            'phone': 'TEXT',
+            'bonus_balance': 'INTEGER DEFAULT 0',
+            'completed_orders': 'INTEGER DEFAULT 0',
+            'ban_reason': 'TEXT',
+            'referral_earnings': 'INTEGER DEFAULT 0',
+            'vip_level': 'INTEGER DEFAULT 0',
+            'discount_percent': 'INTEGER DEFAULT 0',
+            'tags': "TEXT DEFAULT ''",
+            'notes': "TEXT DEFAULT ''",
+            'source': "TEXT DEFAULT 'organic'",
+            'first_seen': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'last_seen': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'last_action': 'TEXT',
+            'session_count': 'INTEGER DEFAULT 1'
+        }
+
+        for col, col_type in user_columns.items():
+            if col not in existing_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+                    logger.info(f"Added column users.{col}")
+                except Exception as e:
+                    logger.debug(f"Column {col} might exist: {e}")
+
+        # Миграция orders
+        cursor.execute("PRAGMA table_info(orders)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        order_columns = {
+            'description': 'TEXT',
+            'substatus': "TEXT DEFAULT ''",
+            'paid_amount': 'INTEGER DEFAULT 0',
+            'payment_status': "TEXT DEFAULT 'not_paid'",
+            'result_files': "TEXT DEFAULT ''",
+            'assigned_worker': 'TEXT',
+            'manager_id': 'INTEGER',
+            'priority': 'INTEGER DEFAULT 0',
+            'is_urgent': 'INTEGER DEFAULT 0',
+            'client_rating': 'INTEGER',
+            'client_feedback': 'TEXT',
+            'internal_notes': "TEXT DEFAULT ''",
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'completed_at': 'TIMESTAMP',
+            'last_client_msg': 'TIMESTAMP',
+            'last_admin_msg': 'TIMESTAMP'
+        }
+
+        for col, col_type in order_columns.items():
+            if col not in existing_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE orders ADD COLUMN {col} {col_type}")
+                    logger.info(f"Added column orders.{col}")
+                except Exception as e:
+                    logger.debug(f"Column {col} might exist: {e}")
+
+        conn.commit()
+        logger.info("✅ Миграция БД завершена")
+
+
 def init_db():
     """Инициализация БД с расширенными таблицами для аналитики"""
     with get_connection() as conn:
@@ -187,6 +257,9 @@ def init_db():
         """)
 
         conn.commit()
+
+    # Запускаем миграцию для добавления новых колонок в старую БД
+    migrate_db()
     logger.info("✅ База данных инициализирована")
 
 
@@ -197,7 +270,7 @@ async def add_user(user_id, username, full_name, referrer_id=0, source='organic'
         cursor = conn.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
         if cursor.fetchone():
             conn.execute("""
-                UPDATE users SET last_seen = ?, session_count = session_count + 1
+                UPDATE users SET last_seen = ?, session_count = COALESCE(session_count, 0) + 1
                 WHERE user_id = ?
             """, (datetime.now(), user_id))
             conn.commit()
@@ -521,24 +594,30 @@ async def get_detailed_stats():
     with get_connection() as conn:
         stats = {}
         stats['total_users'] = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        stats['active_today'] = conn.execute("SELECT COUNT(*) FROM users WHERE last_seen > datetime('now', '-1 day')").fetchone()[0]
-        stats['active_week'] = conn.execute("SELECT COUNT(*) FROM users WHERE last_seen > datetime('now', '-7 days')").fetchone()[0]
-        stats['new_today'] = conn.execute("SELECT COUNT(*) FROM users WHERE first_seen > datetime('now', '-1 day')").fetchone()[0]
+        stats['active_today'] = conn.execute("SELECT COUNT(*) FROM users WHERE last_seen IS NOT NULL AND last_seen > datetime('now', '-1 day')").fetchone()[0]
+        stats['active_week'] = conn.execute("SELECT COUNT(*) FROM users WHERE last_seen IS NOT NULL AND last_seen > datetime('now', '-7 days')").fetchone()[0]
+        stats['new_today'] = conn.execute("SELECT COUNT(*) FROM users WHERE first_seen IS NOT NULL AND first_seen > datetime('now', '-1 day')").fetchone()[0]
         stats['total_orders'] = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
-        stats['new_orders'] = conn.execute("SELECT COUNT(*) FROM orders WHERE status = 'new'").fetchone()[0]
+        stats['new_orders'] = conn.execute("SELECT COUNT(*) FROM orders WHERE status = 'new' OR status = 'checking'").fetchone()[0]
         stats['in_progress'] = conn.execute("SELECT COUNT(*) FROM orders WHERE status = 'in_progress'").fetchone()[0]
         stats['completed'] = conn.execute("SELECT COUNT(*) FROM orders WHERE status = 'done'").fetchone()[0]
         stats['total_revenue'] = conn.execute("SELECT COALESCE(SUM(price), 0) FROM orders WHERE status = 'done'").fetchone()[0]
-        stats['today_revenue'] = conn.execute("SELECT COALESCE(SUM(price), 0) FROM orders WHERE status = 'done' AND completed_at > datetime('now', '-1 day')").fetchone()[0]
+        stats['today_revenue'] = conn.execute("SELECT COALESCE(SUM(price), 0) FROM orders WHERE status = 'done' AND completed_at IS NOT NULL AND completed_at > datetime('now', '-1 day')").fetchone()[0]
         stats['pending_revenue'] = conn.execute("SELECT COALESCE(SUM(price), 0) FROM orders WHERE status NOT IN ('done', 'cancelled')").fetchone()[0]
-        stats['unread_alerts'] = conn.execute("SELECT COUNT(*) FROM admin_alerts WHERE is_read = 0").fetchone()[0]
-        stats['abandoned_carts'] = conn.execute("SELECT COUNT(*) FROM abandoned_carts WHERE recovered = 0 AND created_at > datetime('now', '-24 hours')").fetchone()[0]
+        try:
+            stats['unread_alerts'] = conn.execute("SELECT COUNT(*) FROM admin_alerts WHERE is_read = 0").fetchone()[0]
+        except:
+            stats['unread_alerts'] = 0
+        try:
+            stats['abandoned_carts'] = conn.execute("SELECT COUNT(*) FROM abandoned_carts WHERE recovered = 0 AND created_at > datetime('now', '-24 hours')").fetchone()[0]
+        except:
+            stats['abandoned_carts'] = 0
         return stats
 
 async def get_online_users():
     with get_connection() as conn:
         cursor = conn.execute("""
-            SELECT * FROM users WHERE last_seen > datetime('now', '-5 minutes') ORDER BY last_seen DESC
+            SELECT * FROM users WHERE last_seen IS NOT NULL AND last_seen > datetime('now', '-5 minutes') ORDER BY last_seen DESC
         """)
         return [dict(row) for row in cursor.fetchall()]
 
