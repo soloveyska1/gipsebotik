@@ -1,0 +1,800 @@
+from telegram import Update, InputMediaPhoto
+from telegram.ext import ContextTypes, ConversationHandler
+from database import core as db
+from keyboards import menu as kb
+from config import REVIEW_CHANNEL_ID
+import utils
+
+# === КОНСТАНТЫ ===
+
+WELCOME_PHOTO_ID = "AgACAgIAAxkBAAIRBGkf3jybt7UiWBtsS4itzUfhWvceAALIC2sb7NgAAUkgNJP7MzMPsAEAAwIAA3kAAzYE"
+
+# Картинка для Кодекса Салуна (робот-ковбой)
+SALON_CODE_PHOTO_ID = "AgACAgIAAxkBAAICE2dmbBqExample123456789"  # Заменить на реальный file_id
+
+REVIEW_STATE = 1
+PROMO_STATE = 2
+
+# Бонус за вступление (в рублях/монетах)
+WELCOME_BONUS_AMOUNT = 100
+# Максимум бонусов можно потратить = 20% от заказа
+MAX_BONUS_PERCENT = 0.20
+
+# === ТЕКСТЫ КОДЕКСА САЛУНА ===
+
+SALON_CODE_WELCOME = """
+🚪 <b>ДОБРО ПОЖАЛОВАТЬ В САЛУН, {name}!</b>
+
+Вижу, ты устал с дороги. Дедлайны жарят как солнце пустыни, а преподы злее гремучих змей.
+
+Здесь тебе помогут. Но прежде чем сесть за стол — узнай <b>традиции нашего Салуна</b>.
+
+Это займёт минуту, а потом получишь <b>🎁 {bonus} бонусных рублей</b> на первый заказ.
+"""
+
+SALON_CODE_SHORT = """
+📜 <b>КОДЕКС САЛУНА</b>
+<i>Краткая версия для занятых ковбоев</i>
+
+━━━━━━━━━━━━━━━━━━━━
+
+🤝 <b>НАША СДЕЛКА</b>
+Ты заказываешь — мы делаем. Честно и в срок.
+
+💰 <b>ЗОЛОТО</b>
+Предоплата 50% — и мы начинаем работу.
+Остаток — когда покажем результат.
+
+⏰ <b>СРОКИ</b>
+• Эссе, мелочь: <b>1-3 дня</b>
+• Курсовые: <b>5-7 дней</b>
+• Дипломы: <b>от 14 дней</b>
+• Срочно? Можно быстрее, но дороже.
+
+🔧 <b>ПРАВКИ</b>
+3 пакета правок — бесплатно.
+Дальше — обсудим как ковбой с ковбоем.
+
+🎯 <b>ГЛАВНОЕ</b>
+Работы даём для <b>изучения и вдохновения</b>.
+Как ты их используешь — твоё дело.
+
+🤫 <b>ТИШИНА</b>
+Мы не знаем тебя. Ты не знаешь нас.
+Так спокойнее всем.
+
+━━━━━━━━━━━━━━━━━━━━
+
+<i>👇 Хочешь подробнее — жми кнопку ниже</i>
+"""
+
+SALON_CODE_FULL = """
+📜 <b>КОДЕКС САЛУНА</b>
+<i>Полная версия — все традиции</i>
+
+━━━━━━━━━━━━━━━━━━━━
+
+🤝 <b>1. СЛОВО КОВБОЯ</b>
+
+В Салуне слово дороже золота.
+• Ты заказал — значит, заплатишь
+• Мы взялись — значит, сделаем
+• Проблемы решаем разговором, не стрельбой
+
+━━━━━━━━━━━━━━━━━━━━
+
+💰 <b>2. ЗОЛОТО И ВИСКИ</b>
+
+<b>Как платить:</b>
+• 50% предоплата — чтобы мы начали
+• 50% после — когда покажем работу
+
+<b>Передумал?</b>
+• До начала работы — вернём всё, без вопросов
+• После начала — извини, бармен уже открыл бутылку
+• Спорные случаи решает Шериф (админ)
+
+<b>Бонусы:</b>
+• Копятся с каждого заказа
+• Тратить можно до 20% от суммы заказа
+• Бонусы — это скидка, не живые деньги
+
+━━━━━━━━━━━━━━━━━━━━
+
+⏰ <b>3. КОГДА ЖДАТЬ</b>
+
+• 💋 Эссе, статьи: <b>1-3 дня</b>
+• 🌹 Курсовые: <b>5-7 дней</b>
+• 💍 Дипломы: <b>14-21 день</b>
+• 🎩 Практика: <b>3-5 дней</b>
+
+<b>Нужно срочно?</b>
+Сделаем быстрее, но цена вырастет.
+Дилижанс-экспресс стоит дороже обычного.
+
+<b>Форс-мажор:</b>
+Если что-то идёт не по плану — пишем сразу.
+Без сюрпризов в последний момент.
+
+━━━━━━━━━━━━━━━━━━━━
+
+🔧 <b>4. ПРАВКИ И ДОРАБОТКИ</b>
+
+• <b>3 пакета правок</b> — входят в стоимость
+• Правка = конкретный список замечаний
+• Дальше — по договорённости (обычно недорого)
+
+<b>Когда можно просить правки:</b>
+• Пока работа не принята окончательно
+• В рамках изначального ТЗ
+
+<b>Что не считается правкой:</b>
+• "Перепиши всё по-другому"
+• "Добавь ещё 20 страниц"
+• Новые требования, которых не было
+
+━━━━━━━━━━━━━━━━━━━━
+
+🎯 <b>5. ТВОЯ ДОБЫЧА</b>
+
+Работа — твоя. Полностью.
+
+<b>Мы даём:</b>
+• Качественный материал для изучения
+• Образец, как должна выглядеть работа
+• Основу для твоего собственного текста
+
+<b>Ты решаешь:</b>
+• Как использовать эти материалы
+• Что с ними делать дальше
+• Всю ответственность за применение
+
+<i>Мы — проводники по пустыне знаний.
+Карту дадим, но идёшь ты сам.</i>
+
+━━━━━━━━━━━━━━━━━━━━
+
+🤫 <b>6. ТИШИНА В САЛУНЕ</b>
+
+• Мы не спрашиваем лишнего
+• Ты не рассказываешь о нас
+• Переписка остаётся между нами
+• Данные не передаём третьим лицам
+
+<i>В Салуне не принято болтать.
+Это защищает и тебя, и нас.</i>
+
+━━━━━━━━━━━━━━━━━━━━
+
+⚖️ <b>7. ЕСЛИ ЧТО-ТО ПОШЛО НЕ ТАК</b>
+
+Не хватайся за кольт — сначала поговорим.
+
+• Пиши менеджеру, объясни ситуацию
+• Шериф (админ) разберётся честно
+• Мы заинтересованы в довольных клиентах
+
+<i>Стрелять без предупреждения — не наш стиль.</i>
+
+━━━━━━━━━━━━━━━━━━━━
+
+<b>P.S.</b> Ценим тех, кто читает до конца.
+Шепни бармену <code>FIRSTSHOT</code> — он поймёт 😉
+
+━━━━━━━━━━━━━━━━━━━━
+"""
+
+SALON_CODE_CHECKBOXES = """
+📋 <b>ПОСЛЕДНИЙ ШАГ</b>
+
+Чтобы войти в Салун, подтверди:
+"""
+
+SALON_CODE_ACCEPTED = """
+🎉 <b>ДОБРО ПОЖАЛОВАТЬ В САЛУН, {name}!</b>
+
+Ты теперь один из нас.
+
+🎁 <b>+{bonus}₽</b> упали на твой счёт — потрать их на первый заказ.
+
+<i>Удачи на Диком Западе знаний, ковбой!</i> 🤠
+
+👇 <b>Что нальём?</b>
+"""
+
+# === ОБРАБОТЧИКИ ===
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик /start — проверяет, принял ли пользователь Кодекс."""
+    user = update.effective_user
+    try:
+        await utils.send_typing(context, update.effective_chat.id)
+    except:
+        pass
+
+    # Парсим реферальный ID
+    args = context.args if hasattr(context, 'args') and context.args else []
+    ref_id = int(args[0]) if args and args[0].isdigit() else 0
+
+    # Добавляем пользователя (если новый)
+    is_new = await db.add_user(user.id, user.username, user.full_name, ref_id)
+
+    # Уведомляем реферера
+    if is_new and ref_id:
+        try:
+            await context.bot.send_message(ref_id, f"🤠 <b>Гость в салуне:</b> {user.full_name}", parse_mode="HTML")
+        except:
+            pass
+
+    # Проверяем, принял ли Кодекс
+    rules_accepted = await db.check_rules_accepted(user.id)
+
+    if not rules_accepted:
+        # Показываем Кодекс Салуна
+        return await show_salon_code_welcome(update, context)
+    else:
+        # Показываем главное меню
+        return await show_main_menu(update, context)
+
+
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать главное меню."""
+    user = update.effective_user
+    greeting = utils.get_greeting(user.first_name)
+
+    caption = (
+        f"{greeting}\n\n"
+        "Вижу, ты устал с дороги. Эта академическая пустыня кого угодно сведет с ума. "
+        "Дедлайны палят как солнце, а преподы злее гремучих змей.\n\n"
+        "Паркуй лошадь и расслабься. Ты в <b>«Экспресс-Курсаче»</b>. "
+        "Здесь джентльмены решают вопросы, пока ты пьешь свой виски и наслаждаешься жизнью.\n\n"
+        "👇 <b>Что нальём для храбрости?</b>"
+    )
+
+    if update.callback_query:
+        await update.callback_query.answer()
+        try:
+            await update.callback_query.message.delete()
+        except:
+            pass
+        await context.bot.send_photo(
+            chat_id=user.id,
+            photo=WELCOME_PHOTO_ID,
+            caption=caption,
+            reply_markup=kb.main_kb(user.id),
+            parse_mode="HTML"
+        )
+    else:
+        await update.message.reply_photo(
+            photo=WELCOME_PHOTO_ID,
+            caption=caption,
+            reply_markup=kb.main_kb(user.id),
+            parse_mode="HTML"
+        )
+
+
+# ===== КОДЕКС САЛУНА: ФЛОУ =====
+
+async def show_salon_code_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Шаг 1: Приветствие с картинкой."""
+    user = update.effective_user
+
+    text = SALON_CODE_WELCOME.format(
+        name=user.first_name,
+        bonus=WELCOME_BONUS_AMOUNT
+    )
+
+    # Пытаемся отправить с картинкой робота-ковбоя
+    try:
+        if update.callback_query:
+            await update.callback_query.answer()
+            await update.callback_query.message.delete()
+
+        await context.bot.send_photo(
+            chat_id=user.id,
+            photo=SALON_CODE_PHOTO_ID,
+            caption=text,
+            reply_markup=kb.salon_code_welcome_kb(),
+            parse_mode="HTML"
+        )
+    except Exception:
+        # Если картинка не загружена — отправляем текстом
+        if update.callback_query:
+            await update.callback_query.message.edit_text(
+                text,
+                reply_markup=kb.salon_code_welcome_kb(),
+                parse_mode="HTML"
+            )
+        else:
+            await update.message.reply_text(
+                text,
+                reply_markup=kb.salon_code_welcome_kb(),
+                parse_mode="HTML"
+            )
+
+
+async def show_salon_code_short(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Шаг 2: Краткая версия Кодекса."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.edit_text(
+        SALON_CODE_SHORT,
+        reply_markup=kb.salon_code_short_kb(),
+        parse_mode="HTML"
+    )
+
+
+async def show_salon_code_full(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Шаг 2.5: Полная версия Кодекса."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.edit_text(
+        SALON_CODE_FULL,
+        reply_markup=kb.salon_code_full_kb(),
+        parse_mode="HTML"
+    )
+
+
+async def show_salon_code_checkboxes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Шаг 3: Чекбоксы для принятия."""
+    query = update.callback_query
+    await query.answer()
+
+    # Инициализируем состояние чекбоксов
+    if 'code_checks' not in context.user_data:
+        context.user_data['code_checks'] = {
+            'materials': False,
+            'payment': False,
+            'confidential': False
+        }
+
+    await query.message.edit_text(
+        SALON_CODE_CHECKBOXES,
+        reply_markup=kb.salon_code_checkboxes_kb(context.user_data['code_checks']),
+        parse_mode="HTML"
+    )
+
+
+async def toggle_checkbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Переключение чекбокса."""
+    query = update.callback_query
+    data = query.data
+
+    # Инициализируем, если нет
+    if 'code_checks' not in context.user_data:
+        context.user_data['code_checks'] = {
+            'materials': False,
+            'payment': False,
+            'confidential': False
+        }
+
+    checks = context.user_data['code_checks']
+
+    # Определяем какой чекбокс нажали
+    if data == "code_check_materials":
+        checks['materials'] = not checks['materials']
+    elif data == "code_check_payment":
+        checks['payment'] = not checks['payment']
+    elif data == "code_check_confidential":
+        checks['confidential'] = not checks['confidential']
+
+    await query.answer()
+
+    # Обновляем клавиатуру
+    await query.message.edit_reply_markup(
+        reply_markup=kb.salon_code_checkboxes_kb(checks)
+    )
+
+
+async def code_not_ready(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Пользователь нажал кнопку, но не все чекбоксы отмечены."""
+    query = update.callback_query
+    await query.answer("☝️ Сначала отметь все пункты выше", show_alert=True)
+
+
+async def accept_salon_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Финальное принятие Кодекса."""
+    query = update.callback_query
+    user = query.from_user
+
+    # Записываем принятие в БД
+    await db.accept_rules(user.id)
+
+    # Начисляем приветственный бонус
+    bonus_given = await db.give_welcome_bonus(user.id, WELCOME_BONUS_AMOUNT)
+
+    await query.answer("🎉 Добро пожаловать в Салун!", show_alert=True)
+
+    # Очищаем состояние чекбоксов
+    context.user_data.pop('code_checks', None)
+
+    # Показываем сообщение об успехе
+    success_text = SALON_CODE_ACCEPTED.format(
+        name=user.first_name,
+        bonus=WELCOME_BONUS_AMOUNT if bonus_given else 0
+    )
+
+    try:
+        await query.message.delete()
+    except:
+        pass
+
+    await context.bot.send_photo(
+        chat_id=user.id,
+        photo=WELCOME_PHOTO_ID,
+        caption=success_text,
+        reply_markup=kb.main_kb(user.id),
+        parse_mode="HTML"
+    )
+
+
+async def show_code_of_honor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать Кодекс из профиля (для тех, кто уже принял)."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.edit_text(
+        SALON_CODE_SHORT + "\n\n<i>Ты уже принял традиции Салуна ✅</i>",
+        reply_markup=kb.salon_code_readonly_kb(),
+        parse_mode="HTML"
+    )
+
+
+async def show_code_full_readonly(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Полная версия Кодекса (просмотр)."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.edit_text(
+        SALON_CODE_FULL,
+        reply_markup=kb.salon_code_readonly_kb(),
+        parse_mode="HTML"
+    )
+
+
+# ===== ПРОФИЛЬ И ПРОЧЕЕ =====
+
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Профиль пользователя."""
+    query = update.callback_query
+    await query.answer()
+
+    u = await db.get_user(query.from_user.id)
+    if not u:
+        return await start(update, context)
+
+    # Определяем ранг
+    rank = get_user_rank(u['total_spent'], u['orders_count'])
+
+    txt = (
+        f"👤 <b>ЛИЧНОЕ ДЕЛО</b>\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"🆔 ID: <code>{u['user_id']}</code>\n"
+        f"🎖 Ранг: {rank}\n"
+        f"💰 Баланс: <b>{u['balance']} ₽</b>\n"
+        f"💸 Инвестировано: {u['total_spent']} ₽\n"
+        f"📦 Заказов: {u['orders_count']}\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"<i>Бонусы можно тратить до 20% от заказа</i>"
+    )
+    await query.edit_message_text(txt, reply_markup=kb.profile_kb(), parse_mode="HTML")
+
+
+def get_user_rank(total_spent, orders_count):
+    """Определить ранг пользователя."""
+    if total_spent >= 50000:
+        return "🌟 Легенда Запада"
+    elif total_spent >= 20000:
+        return "⭐️ Шериф"
+    elif total_spent >= 10000:
+        return "🔫 Рейнджер"
+    elif orders_count >= 3:
+        return "🎯 Стрелок"
+    elif orders_count >= 1:
+        return "🤠 Ковбой"
+    else:
+        return "🆕 Новичок"
+
+
+async def partners(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Партнёрская программа."""
+    query = update.callback_query
+    await query.answer()
+    bot = await context.bot.get_me()
+    link = f"https://t.me/{bot.username}?start={query.from_user.id}"
+    text = (
+        "🕸 <b>ЗОЛОТАЯ ЖИЛА</b>\n\n"
+        "Приведи друга в Салун — получи <b>15%</b> от его первого заказа на свой баланс.\n\n"
+        "👇 <b>Твоя ссылка:</b>\n"
+        f"<code>{link}</code>\n\n"
+        "<i>Скинь её другу — и золото потечёт рекой.</i>"
+    )
+    await query.edit_message_text(text, reply_markup=kb.back_kb("profile"), parse_mode="HTML")
+
+
+async def my_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """История заказов."""
+    query = update.callback_query
+    await query.answer()
+    orders = await db.get_user_orders(query.from_user.id)
+    if not orders:
+        await query.edit_message_text(
+            "📂 <b>Архив пуст.</b>\n\n<i>Закажи первую работу — и она появится здесь.</i>",
+            reply_markup=kb.profile_kb(),
+            parse_mode="HTML"
+        )
+    else:
+        await query.edit_message_text(
+            "📂 <b>ТВОИ ДЕЛА:</b>",
+            reply_markup=kb.history_kb(orders),
+            parse_mode="HTML"
+        )
+
+
+async def my_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Детали заказа."""
+    query = update.callback_query
+    await query.answer()
+    oid = int(query.data.split("_")[-1])
+    o = await db.get_order(oid)
+
+    if not o:
+        return await my_history(update, context)
+
+    status_map = {
+        "checking": "🟡 На проверке",
+        "work": "⚙️ В работе",
+        "done": "✅ Готов",
+        "cancel": "❌ Отмена"
+    }
+
+    txt = (
+        f"📦 <b>ЗАКАЗ #{o['id']}</b>\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"📚 Тип: {o['service_type']}\n"
+        f"💰 Цена: {o['price']} ₽\n"
+        f"📊 Статус: {status_map.get(o['status'], o['status'])}\n"
+        f"📝 Тема: {o['topic']}"
+    )
+    await query.edit_message_text(txt, reply_markup=kb.order_details_kb(oid, o['status']), parse_mode="HTML")
+
+
+async def my_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """История транзакций."""
+    query = update.callback_query
+    await query.answer()
+    trans = await db.get_transactions(query.from_user.id)
+    if not trans:
+        return await query.edit_message_text(
+            "💳 <b>Транзакций пока нет.</b>",
+            reply_markup=kb.back_kb("profile"),
+            parse_mode="HTML"
+        )
+
+    txt = "💳 <b>ИСТОРИЯ ОПЕРАЦИЙ:</b>\n\n"
+    for t in trans:
+        sign = "+" if t['amount'] > 0 else ""
+        txt += f"📅 {t['date'][:16]}\n💴 <b>{sign}{t['amount']} ₽</b>\n<i>{t['reason']}</i>\n\n"
+
+    await query.edit_message_text(txt, reply_markup=kb.back_kb("profile"), parse_mode="HTML")
+
+
+# ===== ОТЗЫВЫ =====
+
+async def ask_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Запрос отзыва."""
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "✍️ <b>Напиши пару слов:</b>\n\n"
+        "Мы прибьём твой отзыв на доску почёта (в канал) анонимно.\n"
+        "Кидай текст или скрин.",
+        reply_markup=kb.back_kb("home"),
+        parse_mode="HTML"
+    )
+    return REVIEW_STATE
+
+
+async def submit_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправка отзыва."""
+    user = update.effective_user
+    text = update.message.caption if update.message.caption else update.message.text
+    if not text:
+        text = "Без текста"
+
+    await db.add_review(user.id, text)
+
+    channel_text = (
+        "🌵 <b>ВЕСТОЧКА ИЗ САЛУНА</b>\n"
+        "━━━━━━━━━━━━━━\n"
+        f"{text}\n"
+        "━━━━━━━━━━━━━━\n"
+        "<i>#отзыв #салун</i>"
+    )
+
+    try:
+        if update.message.photo:
+            file_id = update.message.photo[-1].file_id
+            await context.bot.send_photo(
+                chat_id=REVIEW_CHANNEL_ID,
+                photo=file_id,
+                caption=channel_text,
+                parse_mode="HTML"
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=REVIEW_CHANNEL_ID,
+                text=channel_text,
+                parse_mode="HTML"
+            )
+
+        thanks_text = "✅ " + utils.get_random_phrase("done") + "\n\n<i>Твой отзыв опубликован. Спасибо!</i>"
+        await update.message.reply_text(thanks_text, reply_markup=kb.main_kb(user.id), parse_mode="HTML")
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ Ошибка шерифа: {e}",
+            reply_markup=kb.main_kb(user.id)
+        )
+
+    return ConversationHandler.END
+
+
+async def cancel_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отмена отзыва."""
+    return ConversationHandler.END
+
+
+# ===== ПРОМОКОДЫ =====
+
+async def ask_promo_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Запрос промокода."""
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "🎟 <b>Введи промокод:</b>\n\n"
+        "<i>Если у тебя есть секретное слово — шепни его сюда.</i>",
+        reply_markup=kb.back_kb("profile"),
+        parse_mode="HTML"
+    )
+    return PROMO_STATE
+
+
+async def submit_promo_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Проверка и активация промокода."""
+    user = update.effective_user
+    code = update.message.text.strip().upper()
+
+    # Проверяем промокод
+    promo = await db.check_promo_code(code, user.id)
+
+    if promo is None:
+        await update.message.reply_text(
+            "❌ <b>Такого промокода нет.</b>\n\n<i>Проверь правильность написания.</i>",
+            reply_markup=kb.back_kb("profile"),
+            parse_mode="HTML"
+        )
+        return ConversationHandler.END
+
+    if promo.get("error") == "already_used":
+        await update.message.reply_text(
+            "⚠️ <b>Ты уже использовал этот промокод.</b>",
+            reply_markup=kb.back_kb("profile"),
+            parse_mode="HTML"
+        )
+        return ConversationHandler.END
+
+    if promo.get("error") == "max_uses":
+        await update.message.reply_text(
+            "⚠️ <b>Промокод больше не действует.</b>",
+            reply_markup=kb.back_kb("profile"),
+            parse_mode="HTML"
+        )
+        return ConversationHandler.END
+
+    # Активируем промокод
+    await db.use_promo_code(code, user.id)
+
+    # Начисляем бонус
+    if promo['bonus_amount'] > 0:
+        await db.add_balance(user.id, promo['bonus_amount'], f"Промокод {code}")
+
+    response = f"✅ <b>Промокод активирован!</b>\n\n"
+    if promo['bonus_amount'] > 0:
+        response += f"💰 +{promo['bonus_amount']}₽ на баланс\n"
+    if promo['discount_percent'] > 0:
+        response += f"🏷 Скидка {promo['discount_percent']}% на следующий заказ\n"
+
+    await update.message.reply_text(
+        response,
+        reply_markup=kb.profile_kb(),
+        parse_mode="HTML"
+    )
+    return ConversationHandler.END
+
+
+# ===== ПРОЧИЕ ОБРАБОТЧИКИ =====
+
+async def cli_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Клиент подтвердил выполнение заказа."""
+    query = update.callback_query
+    oid = int(query.data.split("_")[-1])
+    await db.update_order_status(oid, "done")
+    await query.answer("✅ Заказ подтверждён!")
+    await my_order(update, context)
+
+
+async def cli_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Удалить заказ из истории."""
+    query = update.callback_query
+    oid = int(query.data.split("_")[-1])
+    await db.update_order_visibility(oid, False)
+    await query.answer("🗑 Удалено из истории")
+    await my_history(update, context)
+
+
+async def handle_thanks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Пасхалка на слово 'спасибо'."""
+    text = update.message.text.lower()
+    if "спасибо" in text or "thanks" in text:
+        phrases = [
+            "🤠 Всегда пожалуйста, партнёр!",
+            "🎩 Рад помочь, ковбой!",
+            "🥃 За это не грех и выпить!",
+            "🌵 Обращайся, если что!"
+        ]
+        import random
+        await update.message.reply_text(random.choice(phrases))
+
+
+# Заглушки для функций, которые будут в других модулях
+async def play_daily_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("🎰 Скоро будет доступно!", show_alert=True)
+
+async def open_safe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("🔐 Сейф пока закрыт", show_alert=True)
+
+async def send_safe_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pass
+
+async def start_duel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("⚔️ Дуэли скоро!", show_alert=True)
+
+async def resolve_duel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pass
+
+async def draw_deadline_oracle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("🔮 Оракул медитирует...", show_alert=True)
+
+async def show_price_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    from config import SERVICES
+
+    text = "💰 <b>ПРАЙС-ЛИСТ САЛУНА</b>\n━━━━━━━━━━━━━━\n\n"
+    for key, srv in SERVICES.items():
+        text += f"{srv['emoji']} <b>{srv['name']}</b>\nот {srv['base']}₽\n\n"
+
+    text += (
+        "━━━━━━━━━━━━━━\n"
+        "⚡️ <i>Срочность +40% к цене</i>\n"
+        "🎤 <i>Речь к защите +1500₽</i>\n"
+        "📊 <i>Презентация +2000₽</i>\n"
+        "👑 <i>VIP-сопровождение +2500₽</i>"
+    )
+
+    await query.edit_message_text(text, reply_markup=kb.back_kb("home"), parse_mode="HTML")
+
+
+async def show_price_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pass
+
+
+async def accept_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Алиас для accept_salon_code (совместимость)."""
+    return await accept_salon_code(update, context)
