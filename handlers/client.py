@@ -130,14 +130,14 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += f"  ✅ Выполнено: {user.get('completed_orders', 0)}\n"
     text += f"  💰 Потрачено: {user.get('total_spent', 0)}₽\n\n"
 
-    text += f"💎 <b>Баланс:</b> {user.get('balance', 0)}₽\n"
-    text += f"🎁 <b>Бонусы:</b> {user.get('bonus_balance', 0)}₽\n\n"
+    text += f"🪙 <b>Золото:</b> {user.get('gold', 0)}\n"
+    text += f"🏆 <b>Ранг:</b> {user.get('rank', 'newcomer')}\n\n"
 
-    # VIP статус
-    vip = user.get('vip_level', 0)
-    if vip > 0:
-        text += f"👑 <b>VIP статус:</b> Уровень {vip}\n"
-        text += f"🏷 <b>Скидка:</b> {user.get('discount_percent', 0)}%\n\n"
+    # Скидка по рангу
+    from config import RANKS
+    rank_data = RANKS.get(user.get('rank', 'newcomer'), {})
+    if rank_data.get('discount', 0) > 0:
+        text += f"🏷 <b>Скидка:</b> {rank_data['discount']}%\n\n"
 
     # Активные заказы
     active_orders = [o for o in orders if o['status'] not in ('done', 'cancelled')]
@@ -195,7 +195,7 @@ async def my_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
             topic = escape((o.get('topic') or 'Без темы')[:30])
             text += f"<b>#{o['id']}</b> {status}\n"
             text += f"   📝 {topic}\n"
-            text += f"   💰 {o.get('price', 0)}₽\n\n"
+            text += f"   💰 {o.get('final_price', 0)}₽\n\n"
     else:
         text += "<i>У вас пока нет заказов</i>\n\n"
         text += "Нажмите «Сделать заказ» чтобы начать!"
@@ -244,11 +244,11 @@ async def my_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
 
     text += f"📌 <b>Статус:</b> {status_names.get(order['status'], order['status'])}\n\n"
-    text += f"📝 <b>Тип:</b> {order.get('service_type', 'Не указан')}\n"
+    text += f"📝 <b>Тип:</b> {order.get('service_name', 'Не указан')}\n"
     text += f"📚 <b>Тема:</b> {escape(order.get('topic', 'Не указана')[:100])}\n"
     text += f"📅 <b>Дедлайн:</b> {order.get('deadline', 'Не указан')}\n"
-    text += f"💰 <b>Стоимость:</b> {order.get('price', 0)}₽\n"
-    text += f"💳 <b>Оплата:</b> {order.get('payment_status', 'ожидает оплаты')}\n"
+    text += f"💰 <b>Стоимость:</b> {order.get('final_price', 0)}₽\n"
+    text += f"💳 <b>Оплата:</b> {order.get('payment_status', 'pending')}\n"
 
     keyboard = [
         [InlineKeyboardButton("💬 Чат по заказу", callback_data=f"chat_order_{order_id}")]

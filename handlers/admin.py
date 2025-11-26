@@ -166,7 +166,7 @@ async def orders_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
             unread_badge = f" 💬{unread}" if unread else ""
 
             text += f"{emoji} <b>#{o['id']}</b> {topic}\n"
-            text += f"   👤 {name} | 💰 {o['price']}₽{unread_badge}\n\n"
+            text += f"   👤 {name} | 💰 {o.get('final_price', 0)}₽{unread_badge}\n\n"
     else:
         text += "<i>Нет заказов</i>\n"
 
@@ -224,11 +224,11 @@ async def order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
 
     text += f"📌 <b>Статус:</b> {status_names.get(order['status'], order['status'])}\n"
-    text += f"📝 <b>Тип:</b> {order.get('service_type', 'Не указан')}\n"
+    text += f"📝 <b>Тип:</b> {order.get('service_name', 'Не указан')}\n"
     text += f"📚 <b>Тема:</b> {escape(order.get('topic', 'Не указана')[:100])}\n"
     text += f"📅 <b>Дедлайн:</b> {order.get('deadline', 'Не указан')}\n"
-    text += f"💰 <b>Цена:</b> {order.get('price', 0)}₽\n"
-    text += f"💳 <b>Оплата:</b> {order.get('payment_status', 'не оплачен')}\n\n"
+    text += f"💰 <b>Цена:</b> {order.get('final_price', 0)}₽\n"
+    text += f"💳 <b>Оплата:</b> {order.get('payment_status', 'pending')}\n\n"
 
     # Информация о клиенте
     if user:
@@ -416,7 +416,7 @@ async def user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user.get('username'):
         text += f"📱 <b>Username:</b> @{user['username']}\n"
     text += f"🆔 <b>ID:</b> <code>{user_id}</code>\n"
-    text += f"📅 <b>Регистрация:</b> {user.get('first_seen', 'Не известно')[:10]}\n"
+    text += f"📅 <b>Регистрация:</b> {str(user.get('created_at', 'Не известно'))[:10]}\n"
     text += f"🕐 <b>Последний визит:</b> {str(user.get('last_seen', ''))[:16]}\n\n"
 
     # Статистика
@@ -424,16 +424,14 @@ async def user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += f"  📦 Заказов: {user.get('orders_count', 0)}\n"
     text += f"  ✅ Выполнено: {user.get('completed_orders', 0)}\n"
     text += f"  💰 Потрачено: {user.get('total_spent', 0)}₽\n"
-    text += f"  💎 Баланс: {user.get('balance', 0)}₽\n"
-    text += f"  🎁 Бонусы: {user.get('bonus_balance', 0)}₽\n\n"
+    text += f"  🪙 Золото: {user.get('gold', 0)}\n"
+    text += f"  🏆 Ранг: {user.get('rank', 'newcomer')}\n\n"
 
     # Теги и статус
     if user.get('is_banned'):
         text += f"🚫 <b>ЗАБАНЕН:</b> {user.get('ban_reason', 'Без причины')}\n\n"
     if user.get('tags'):
         text += f"🏷 <b>Теги:</b> {user['tags']}\n\n"
-    if user.get('vip_level', 0) > 0:
-        text += f"👑 <b>VIP уровень:</b> {user['vip_level']}\n\n"
 
     # Заметки
     if user.get('notes'):
@@ -443,8 +441,8 @@ async def user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if actions:
         text += "🔍 <b>ПОСЛЕДНИЕ ДЕЙСТВИЯ</b>\n"
         for a in actions[:5]:
-            time = str(a.get('timestamp', ''))[-8:-3]
-            action_text = a.get('message_text', a.get('action_type', ''))[:30]
+            time = str(a.get('created_at', ''))[-8:-3]
+            action_text = a.get('action', a.get('data', ''))[:30]
             text += f"  {time} — {escape(action_text)}\n"
         text += "\n"
 
@@ -452,8 +450,8 @@ async def user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if orders:
         text += f"📦 <b>ЗАКАЗЫ ({len(orders)})</b>\n"
         for o in orders[:3]:
-            status_emoji = {'new': '🆕', 'in_progress': '⚙️', 'done': '✅'}.get(o['status'], '📦')
-            text += f"  {status_emoji} #{o['id']} — {o.get('price', 0)}₽\n"
+            status_emoji = {'new': '🆕', 'in_progress': '⚙️', 'done': '✅', 'completed': '✅'}.get(o['status'], '📦')
+            text += f"  {status_emoji} #{o['id']} — {o.get('final_price', 0)}₽\n"
 
     keyboard = [
         [
@@ -500,9 +498,9 @@ async def user_actions_log(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if actions:
         for a in actions:
-            time = str(a.get('timestamp', ''))[-8:-3]
-            atype = a.get('action_type', 'action')
-            msg = escape((a.get('message_text') or a.get('button_clicked') or '')[:40])
+            time = str(a.get('created_at', ''))[-8:-3]
+            atype = a.get('action', 'action')
+            msg = escape((a.get('data') or '')[:40])
             text += f"<code>{time}</code> [{atype}] {msg}\n"
     else:
         text += "<i>Нет данных</i>"
@@ -721,9 +719,9 @@ async def live_log(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if actions:
         for a in actions:
-            time = str(a.get('timestamp', ''))[-8:-3]
+            time = str(a.get('created_at', ''))[-8:-3]
             name = escape((a.get('full_name') or 'Аноним')[:12])
-            action = escape((a.get('message_text') or a.get('action_type', ''))[:25])
+            action = escape((a.get('action') or '')[:25])
             text += f"<code>{time}</code> <b>{name}</b>\n"
             text += f"        {action}\n"
     else:

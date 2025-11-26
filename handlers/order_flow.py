@@ -376,14 +376,16 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Создаём заказ в БД
     order_data = {
-        'uid': user_id,
-        'type': order.get('type_name', 'Работа'),
+        'user_id': user_id,
+        'service_type': order.get('type', 'essay'),
+        'service_name': order.get('type_name', 'Работа'),
         'topic': order.get('topic', 'Без темы'),
+        'urgency': order.get('deadline', 'normal'),
         'deadline': order.get('deadline_name', 'Стандартный'),
-        'deadline_type': order.get('deadline', 'normal'),
-        'price': order.get('price', 0),
-        'files': order.get('files', ''),
-        'desc': json.dumps({'upsells': order.get('upsells', [])}, ensure_ascii=False)
+        'base_price': order.get('base_price', 0),
+        'final_price': order.get('price', 0),
+        'upsells': order.get('upsells', []),
+        'files': order.get('files', '').split(',') if order.get('files') else []
     }
 
     order_id = await db.create_order(order_data)
