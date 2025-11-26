@@ -54,7 +54,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Логируем действие
-    await db.log_action(user.id, 'start', screen='main_menu')
+    await db.log_action(user.id, 'start', 'main_menu')
     await db.track_funnel(user.id, 'start')
 
     # Получаем данные пользователя
@@ -111,7 +111,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = await db.get_user(user_id)
 
-    await db.log_action(user_id, 'view_profile', screen='profile')
+    await db.log_action(user_id, 'view_profile', 'profile')
 
     if not user:
         await query.edit_message_text("❌ Профиль не найден. Нажмите /start")
@@ -175,7 +175,7 @@ async def my_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     orders = await db.get_user_orders(user_id)
 
-    await db.log_action(user_id, 'view_orders', screen='orders_history')
+    await db.log_action(user_id, 'view_orders', 'orders_history')
 
     text = "📦 <b>МОИ ЗАКАЗЫ</b>\n"
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -305,7 +305,7 @@ async def show_price_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     user_id = update.effective_user.id
-    await db.log_action(user_id, 'view_price', screen='price_list')
+    await db.log_action(user_id, 'view_price', 'price_list')
     await db.track_funnel(user_id, 'view_services')
 
     text = "💰 <b>ПРАЙС-ЛИСТ</b>\n"

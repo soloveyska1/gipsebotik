@@ -38,7 +38,7 @@ async def start_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
 
     user_id = update.effective_user.id
-    await db.log_action(user_id, 'start_order', screen='order_type')
+    await db.log_action(user_id, 'start_order', 'order_type')
     await db.track_funnel(user_id, 'select_service')
 
     # Сбрасываем данные заказа
@@ -85,7 +85,7 @@ async def get_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     user_id = update.effective_user.id
-    await db.log_action(user_id, 'select_type', action_data=service_key, screen='order_topic')
+    await db.log_action(user_id, 'select_type', f'{service_key}:order_topic')
     await db.track_funnel(user_id, 'enter_topic')
 
     # Сохраняем выбор
@@ -159,7 +159,7 @@ async def get_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return TOPIC
 
-    await db.log_action(user_id, 'enter_topic', message=topic[:100], screen='order_deadline')
+    await db.log_action(user_id, 'enter_topic', f'{topic[:100]}:order_deadline')
     await db.track_funnel(user_id, 'select_deadline')
 
     # Сохраняем
@@ -217,7 +217,7 @@ async def get_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("❌ Ошибка выбора срока")
         return ConversationHandler.END
 
-    await db.log_action(user_id, 'select_deadline', action_data=deadline_key, screen='order_upsell')
+    await db.log_action(user_id, 'select_deadline', f'{deadline_key}:order_upsell')
     await db.track_funnel(user_id, 'select_upsell')
 
     # Сохраняем
@@ -275,7 +275,7 @@ async def get_upsell(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return DEADLINE
 
     if query.data == "upsell_done":
-        await db.log_action(user_id, 'upsell_done', screen='order_confirm')
+        await db.log_action(user_id, 'upsell_done', 'order_confirm')
         await db.track_funnel(user_id, 'confirm')
         return await show_confirmation(update, context)
 
@@ -371,7 +371,7 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     order = context.user_data.get('order', {})
 
-    await db.log_action(user_id, 'submit_order', screen='order_created')
+    await db.log_action(user_id, 'submit_order', 'order_created')
     await db.track_funnel(user_id, 'paid')  # или другой этап
 
     # Создаём заказ в БД
